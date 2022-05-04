@@ -9,6 +9,6 @@ public class Constants {
     public static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
 
     //Image related constants
-    public static final int BITMAP_WIDTH = 300;
-    public static final int BITMAP_HEIGHT = 300;
+    public static final int BITMAP_WIDTH = 480;
+    public static final int BITMAP_HEIGHT = 640;
 }

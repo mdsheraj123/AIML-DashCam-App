@@ -1,6 +1,9 @@
 
 package com.qc.dashcam.Fragment;
 
+import static com.qc.dashcam.CommonUtil.Constants.BITMAP_HEIGHT;
+import static com.qc.dashcam.CommonUtil.Constants.BITMAP_WIDTH;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -20,10 +23,12 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.view.LayoutInflater;
@@ -31,6 +36,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 
 import com.qc.dashcam.CommonUtil.Constants;
 import com.qc.dashcam.CommonUtil.Logger;
@@ -66,6 +72,7 @@ public class CameraPreviewFragment extends Fragment implements
     private OverlayRenderer mOverlayRenderer;
     private String searchLabel;
     private boolean mInferenceSkipped;
+    private View mView;
 
     public static CameraPreviewFragment create() {
         final CameraPreviewFragment fragment = new CameraPreviewFragment();
@@ -103,9 +110,10 @@ public class CameraPreviewFragment extends Fragment implements
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        mView = view;
         mTextureView = (TextureView) view.findViewById(R.id.surface);
         mTextureView.setSurfaceTextureListener(this);
-        mOverlayRenderer = view.findViewById(R.id.overlayRenderer);
+//        mOverlayRenderer = view.findViewById(R.id.overlayRenderer);
 
         mCameraManager = (CameraManager) getActivity().getApplicationContext().
                 getSystemService(Context.CAMERA_SERVICE);
@@ -293,15 +301,51 @@ public class CameraPreviewFragment extends Fragment implements
 
     private class CameraSession extends android.hardware.camera2.CameraCaptureSession.CaptureCallback {
 
+        @RequiresApi(api = Build.VERSION_CODES.O)
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull
                 CaptureRequest request, @NonNull TotalCaptureResult result) {
             super.onCaptureCompleted(session, request, result);
             Logger.d(TAG, "onCaptureCompleted :");
-            int rotation = getActivity().getWindowManager().getDefaultDisplay().getRotation();
+//            int rotation = getActivity().getWindowManager().getDefaultDisplay().getRotation();
             if (mNetworkLoaded) {
-                Bitmap mBitmap = mTextureView.getBitmap(Constants.BITMAP_WIDTH, Constants.BITMAP_HEIGHT);
 
+
+                final int inputWidth = mSnpeHelper.getInputTensorWidth();
+                final int inputHeight = mSnpeHelper.getInputTensorHeight();
+
+                Bitmap mBitmap = mTextureView.getBitmap(inputWidth, inputHeight);
+
+//                Matrix matrix = new Matrix();
+//                boolean xFlip = true;
+//                boolean yFlip = false;
+//                matrix.postScale(xFlip ? -1 : 1, yFlip ? -1 : 1, BITMAP_WIDTH / 2f, BITMAP_HEIGHT / 2f);
+//                matrix.postRotate(270);
+//                Bitmap scaledBitmap = Bitmap.createScaledBitmap(mBitmap, 640, 480, true);
+//                Bitmap rotatedBitmap = Bitmap.createBitmap(scaledBitmap, 0, 0, 640, 480, matrix, true);
+
+                final Bitmap mask = mSnpeHelper.mobileNetSSDInference(mBitmap);
+
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // UI updation related code.
+                        final View mImg = mView.findViewById(R.id.outputBitmap);
+                        ((ImageView) mImg).setImageBitmap(mask);
+                    }
+                });
+
+
+
+
+
+
+
+
+
+
+
+                /*
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 mBitmap.compress(Bitmap.CompressFormat.JPEG, 50, stream);
                 byte[] byteArray = stream.toByteArray();
@@ -346,7 +390,6 @@ public class CameraPreviewFragment extends Fragment implements
                 }
                 mModelInputCanvas.drawColor(Color.BLACK);
                 mModelInputCanvas.drawBitmap(compressedBitmap, 0, 0, mModelBitmapPaint);
-                final ArrayList<Box> boxes = mSnpeHelper.mobileNetSSDInference(mModelInputBitmap);
 
                 // [2-45ms] give the bitmap to SNPE for inference
                 mInferenceSkipped = boxes == null;
@@ -378,6 +421,7 @@ public class CameraPreviewFragment extends Fragment implements
                 }
                 // deep copy the results so we can draw the current set while guessing the next set
                 mOverlayRenderer.setBoxesFromAnotherThread(boxes);
+                 */
             }
         }
 

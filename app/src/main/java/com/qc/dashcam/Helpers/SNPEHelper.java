@@ -3,8 +3,12 @@ package com.qc.dashcam.Helpers;
 import android.app.Application;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Looper;
+import android.support.annotation.RequiresApi;
 import android.util.ArrayMap;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.qc.dashcam.CommonUtil.Logger;
@@ -54,18 +58,22 @@ public class SNPEHelper {
     }
 
     public int getInputTensorWidth() {
-        return mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[1];
+        int answer = mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[1];
+        Log.e("SHERAJ", "getInputTensorWidth is " + answer);
+        return answer;
     }
 
     public int getInputTensorHeight() {
-        return mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[2];
+        int answer = mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[2];
+        Log.e("SHERAJ", "getInputTensorHeight is " + answer);
+        return answer;
     }
 
     /* MobileNet-SSD Specific */
 
-    private static final String MNETSSD_MODEL_ASSET_NAME = "object_detect.dlc";
-    private static final String MNETSSD_INPUT_LAYER = "data";
-    private static final String MNETSSD_OUTPUT_LAYER = "detection_out";
+    private static final String MNETSSD_MODEL_ASSET_NAME = "qseg_person_align_1_quant.dlc";
+    private static final String MNETSSD_INPUT_LAYER = "actual_input_1";
+    private static final String MNETSSD_OUTPUT_LAYER = "output1";
     private static final boolean MNETSSD_NEEDS_CPU_FALLBACK = true;
     private static int MNETSSD_NUM_BOXES = 100;
     private final float[] floatOutput = new float[MNETSSD_NUM_BOXES * 7];
@@ -84,14 +92,14 @@ public class SNPEHelper {
         NeuralNetwork.Runtime selectedCore = NeuralNetwork.Runtime.GPU_FLOAT16;
 
         // load the network
-        mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
-                selectedCore, MNETSSD_NEEDS_CPU_FALLBACK, MNETSSD_OUTPUT_LAYER);
+//        mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
+//                selectedCore, MNETSSD_NEEDS_CPU_FALLBACK);
 
         // if it didn't work, retry on CPU
         if (mNeuralNetwork == null) {
             complain("Error loading the DLC network on the " + selectedCore + " core. Retrying on CPU.");
             mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
-                    NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK, MNETSSD_OUTPUT_LAYER);
+                    NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK);
             if (mNeuralNetwork == null) {
                 complain("Error also on CPU");
                 return false;
@@ -111,12 +119,36 @@ public class SNPEHelper {
         return true;
     }
 
-    public ArrayList<Box> mobileNetSSDInference(Bitmap modelInputBitmap) {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public Bitmap mobileNetSSDInference(Bitmap modelInputBitmap) {
+
+        Bitmap bitmap = Bitmap.createBitmap(480, 640, Bitmap.Config.ARGB_8888);
         try {
             // execute the inference, and get 3 tensors as outputs
             final Map<String, FloatTensor> outputs = inferenceOnBitmap(modelInputBitmap);
             if (outputs == null)
                 return null;
+
+            int outputSize = outputs.get(MNETSSD_OUTPUT_LAYER).getSize();
+            final float[] newFloatOutput = new float[outputSize];
+            outputs.get(MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
+
+
+            int width = 480;
+            int height = 640;
+
+
+            for(int i=0;i<width;i++) {
+                for(int j=0;j<height;j++) {
+                    int startPixel = (i*width+j);
+//                    bitmap.setPixel(i,j, Color.argb(0.5f,
+//                            0.0f,(newFloatOutput[startPixel]+16.5f)/30f,0.0f));
+                    bitmap.setPixel(i,j, Color.argb(0.5f,
+                            0.0f,newFloatOutput[startPixel]>0.0f?1f:0f,0.0f));
+                }
+            }
+
+            /*
             MNETSSD_NUM_BOXES = outputs.get(MNETSSD_OUTPUT_LAYER).getSize() / 7;
             Logger.d(TAG, "MNETSSD_NUM_BOXES   " + MNETSSD_NUM_BOXES);
             // convert tensors to boxes - Note: Optimized to read-all upfront
@@ -143,10 +175,11 @@ public class SNPEHelper {
                 box.type_name = lookupMsCoco(box.type_id, "???");
                 mSSDOutputBoxes = mSSDOutputScores = mSSDOutputClasses = null;
             }
+            */
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return mSSDBoxes;
+        return bitmap;
     }
 
 
