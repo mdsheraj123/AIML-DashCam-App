@@ -144,7 +144,7 @@ public class SNPEHelper {
 //                    bitmap.setPixel(i,j, Color.argb(0.5f,
 //                            0.0f,(newFloatOutput[startPixel]+16.5f)/30f,0.0f));
                     bitmap.setPixel(i,j, Color.argb(0.5f,
-                            0.0f,newFloatOutput[startPixel]>0.0f?1f:0f,0.0f));
+                            0.0f,newFloatOutput[startPixel]>0.5f?1f:0f,0.0f));
                 }
             }
 
