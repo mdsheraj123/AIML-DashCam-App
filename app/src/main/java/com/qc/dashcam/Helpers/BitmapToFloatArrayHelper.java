@@ -37,15 +37,15 @@ public class BitmapToFloatArrayHelper {
         final int area = mFloatBufferHW3.length / 3;
         long sumG = 0;
         int srcIdx = 0, dstIdx = 0;
-        final float inputScale = 0.00784313771874f; // 2/255
         for (int i = 0; i < area; i++) {
             // NOTE: the 0xFF a "cast" to unsigned int (otherwise it will be negative numbers for bright colors)
             final int pixelR = inputArrayHW4[srcIdx] & 0xFF;
             final int pixelG = inputArrayHW4[srcIdx + 1] & 0xFF;
             final int pixelB = inputArrayHW4[srcIdx + 2] & 0xFF;
-            mFloatBufferHW3[dstIdx] = (float) pixelR / 255.0f;
-            mFloatBufferHW3[dstIdx + 1] = (float) pixelG / 255.0f;
-            mFloatBufferHW3[dstIdx + 2] = (float) pixelB / 255.0f;
+            mFloatBufferHW3[dstIdx] = ((float) pixelR / 255.0f)*1.5>1.0f? 1.0f : (float) (((float) pixelR / 255.0f) * 1.5); // Boosting light
+            mFloatBufferHW3[dstIdx + 1] = ((float) pixelG / 255.0f)*1.5>1.0f? 1.0f : (float) (((float) pixelG / 255.0f) * 1.5); // Boosting light
+            mFloatBufferHW3[dstIdx + 2] = ((float) pixelB / 255.0f)*1.5>1.0f? 1.0f : (float) (((float) pixelB / 255.0f) * 1.5); // Boosting light
+
             srcIdx += 4;
             dstIdx += 3;
             sumG += pixelG;

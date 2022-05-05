@@ -138,13 +138,30 @@ public class SNPEHelper {
             int height = 640;
 
 
+            float minPixel = newFloatOutput[0];
+            float maxPixel = newFloatOutput[0];
+
+            for(int i=0;i<width;i++) {
+                for(int j=0;j<height;j++) {
+                    int startPixel = (i*width+j);
+                    minPixel = Math.min(minPixel,newFloatOutput[startPixel]);
+                    maxPixel = Math.max(maxPixel,newFloatOutput[startPixel]);
+                }
+            }
+            float scale = 1.0f / (maxPixel-minPixel);
+
+            Log.e("SHERAJ","minPixel is "+ minPixel +" maxPixel is " + maxPixel);
+
+
             for(int i=0;i<width;i++) {
                 for(int j=0;j<height;j++) {
                     int startPixel = (i*width+j);
 //                    bitmap.setPixel(i,j, Color.argb(0.5f,
 //                            0.0f,(newFloatOutput[startPixel]+16.5f)/30f,0.0f));
-                    bitmap.setPixel(i,j, Color.argb(0.5f,
-                            0.0f,newFloatOutput[startPixel]>0.5f?1f:0f,0.0f));
+                    float value = (newFloatOutput[startPixel]-minPixel)*scale;
+                    assert (value>=0&&value<=1);
+                    bitmap.setPixel(i,j, Color.argb(0.75f,
+                            value,0.0f,value));
                 }
             }
 
