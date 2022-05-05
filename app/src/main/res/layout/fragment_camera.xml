@@ -5,23 +5,21 @@
     android:layout_height="match_parent"
     tools:context=".Activity.MainActivity">
 
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <TextureView
             android:id="@+id/surface"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_width="480px"
+            android:layout_height="640px" />
 
         <ImageView
             android:id="@+id/outputBitmap"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="visible"
-            android:scaleType="fitXY" />
+            android:layout_width="480px"
+            android:layout_height="640px" />
 
-    </FrameLayout>
+    </LinearLayout>
 
 <!--    <com.qc.dashcam.Helpers.OverlayRenderer-->
 <!--        android:id="@+id/overlayRenderer"-->

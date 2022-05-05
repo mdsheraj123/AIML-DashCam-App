@@ -74,6 +74,7 @@ public class SNPEHelper {
     private static final String MNETSSD_MODEL_ASSET_NAME = "qseg_person_align_1_quant.dlc";
     private static final String MNETSSD_INPUT_LAYER = "actual_input_1";
     private static final String MNETSSD_OUTPUT_LAYER = "output1";
+    private static final String PASSTHROUGH_MNETSSD_OUTPUT_LAYER = "actual_input_1";
     private static final boolean MNETSSD_NEEDS_CPU_FALLBACK = true;
     private static int MNETSSD_NUM_BOXES = 100;
     private final float[] floatOutput = new float[MNETSSD_NUM_BOXES * 7];
@@ -92,14 +93,14 @@ public class SNPEHelper {
         NeuralNetwork.Runtime selectedCore = NeuralNetwork.Runtime.GPU_FLOAT16;
 
         // load the network
-//        mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
-//                selectedCore, MNETSSD_NEEDS_CPU_FALLBACK);
+        mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
+                selectedCore, MNETSSD_NEEDS_CPU_FALLBACK, PASSTHROUGH_MNETSSD_OUTPUT_LAYER);
 
         // if it didn't work, retry on CPU
         if (mNeuralNetwork == null) {
             complain("Error loading the DLC network on the " + selectedCore + " core. Retrying on CPU.");
             mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
-                    NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK);
+                    NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK, PASSTHROUGH_MNETSSD_OUTPUT_LAYER);
             if (mNeuralNetwork == null) {
                 complain("Error also on CPU");
                 return false;
@@ -129,39 +130,47 @@ public class SNPEHelper {
             if (outputs == null)
                 return null;
 
-            int outputSize = outputs.get(MNETSSD_OUTPUT_LAYER).getSize();
-            final float[] newFloatOutput = new float[outputSize];
-            outputs.get(MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
+//            int outputSize = outputs.get(MNETSSD_OUTPUT_LAYER).getSize();
+//            final float[] newFloatOutput = new float[outputSize];
+//            outputs.get(MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
 
+
+            int outputSize = outputs.get(PASSTHROUGH_MNETSSD_OUTPUT_LAYER).getSize();
+            final float[] newFloatOutput = new float[outputSize];
+            outputs.get(PASSTHROUGH_MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
 
             int width = 480;
             int height = 640;
 
 
-            float minPixel = newFloatOutput[0];
-            float maxPixel = newFloatOutput[0];
+//            float minPixel = newFloatOutput[0];
+//            float maxPixel = newFloatOutput[0];
+//
+//            for(int i=0;i<width;i++) {
+//                for(int j=0;j<height;j++) {
+//                    int startPixel = (i*width+j);
+//                    minPixel = Math.min(minPixel,newFloatOutput[startPixel]);
+//                    maxPixel = Math.max(maxPixel,newFloatOutput[startPixel]);
+//                }
+//            }
+//            float scale = 1.0f / (maxPixel-minPixel);
+//
+//            Log.e("SHERAJ","minPixel is "+ minPixel +" maxPixel is " + maxPixel);
+//            for(int i=0;i<width;i++) {
+//                for(int j=0;j<height;j++) {
+//                    int startPixel = (i*width+j);
+//                    float value = newFloatOutput[startPixel]>0.5f?(newFloatOutput[startPixel]-minPixel)*scale:0f;
+//                    assert (value>=0&&value<=1);
+//                    bitmap.setPixel(i,j, Color.argb(1f,
+//                            value,0.0f,value));
+//                }
+//            }
 
             for(int i=0;i<width;i++) {
                 for(int j=0;j<height;j++) {
-                    int startPixel = (i*width+j);
-                    minPixel = Math.min(minPixel,newFloatOutput[startPixel]);
-                    maxPixel = Math.max(maxPixel,newFloatOutput[startPixel]);
-                }
-            }
-            float scale = 1.0f / (maxPixel-minPixel);
-
-            Log.e("SHERAJ","minPixel is "+ minPixel +" maxPixel is " + maxPixel);
-
-
-            for(int i=0;i<width;i++) {
-                for(int j=0;j<height;j++) {
-                    int startPixel = (i*width+j);
-//                    bitmap.setPixel(i,j, Color.argb(0.5f,
-//                            0.0f,(newFloatOutput[startPixel]+16.5f)/30f,0.0f));
-                    float value = (newFloatOutput[startPixel]-minPixel)*scale;
-                    assert (value>=0&&value<=1);
-                    bitmap.setPixel(i,j, Color.argb(0.75f,
-                            value,0.0f,value));
+                    int startPixel = (i*width+j)*3;
+                    bitmap.setPixel(i,j, Color.argb(1f,
+                            newFloatOutput[startPixel],newFloatOutput[startPixel+1],newFloatOutput[startPixel+2]));
                 }
             }
 
