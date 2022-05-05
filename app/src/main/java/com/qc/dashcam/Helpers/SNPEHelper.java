@@ -40,6 +40,8 @@ public class SNPEHelper {
     private FloatTensor mInputTensorReused;
     private Map<String, FloatTensor> mInputTensorsMap;
 
+    boolean isPassthrough = false;
+
     public SNPEHelper(Application application) {
         mApplication = application;
         mContext = application;
@@ -58,13 +60,13 @@ public class SNPEHelper {
     }
 
     public int getInputTensorWidth() {
-        int answer = mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[1];
+        int answer = mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[2];
         Log.e("SHERAJ", "getInputTensorWidth is " + answer);
         return answer;
     }
 
     public int getInputTensorHeight() {
-        int answer = mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[2];
+        int answer = mInputTensorShapeHWC == null ? 0 : mInputTensorShapeHWC[1];
         Log.e("SHERAJ", "getInputTensorHeight is " + answer);
         return answer;
     }
@@ -93,14 +95,25 @@ public class SNPEHelper {
         NeuralNetwork.Runtime selectedCore = NeuralNetwork.Runtime.GPU_FLOAT16;
 
         // load the network
-        mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
-                selectedCore, MNETSSD_NEEDS_CPU_FALLBACK, PASSTHROUGH_MNETSSD_OUTPUT_LAYER);
+        if(isPassthrough) {
+            mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
+                    selectedCore, MNETSSD_NEEDS_CPU_FALLBACK, PASSTHROUGH_MNETSSD_OUTPUT_LAYER);
+        } else {
+            mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
+                    selectedCore, MNETSSD_NEEDS_CPU_FALLBACK);
+        }
 
         // if it didn't work, retry on CPU
         if (mNeuralNetwork == null) {
             complain("Error loading the DLC network on the " + selectedCore + " core. Retrying on CPU.");
-            mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
-                    NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK, PASSTHROUGH_MNETSSD_OUTPUT_LAYER);
+
+            if(isPassthrough) {
+                mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
+                        NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK, PASSTHROUGH_MNETSSD_OUTPUT_LAYER);
+            } else {
+                mNeuralNetwork = loadNetworkFromDLCAsset(mApplication, MNETSSD_MODEL_ASSET_NAME,
+                        NeuralNetwork.Runtime.CPU, MNETSSD_NEEDS_CPU_FALLBACK);
+            }
             if (mNeuralNetwork == null) {
                 complain("Error also on CPU");
                 return false;
@@ -123,56 +136,76 @@ public class SNPEHelper {
     @RequiresApi(api = Build.VERSION_CODES.O)
     public Bitmap mobileNetSSDInference(Bitmap modelInputBitmap) {
 
-        Bitmap bitmap = Bitmap.createBitmap(480, 640, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888);
         try {
             // execute the inference, and get 3 tensors as outputs
             final Map<String, FloatTensor> outputs = inferenceOnBitmap(modelInputBitmap);
             if (outputs == null)
                 return null;
 
-//            int outputSize = outputs.get(MNETSSD_OUTPUT_LAYER).getSize();
-//            final float[] newFloatOutput = new float[outputSize];
-//            outputs.get(MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
+
+            int width = 640;
+            int height = 480;
 
 
-            int outputSize = outputs.get(PASSTHROUGH_MNETSSD_OUTPUT_LAYER).getSize();
-            final float[] newFloatOutput = new float[outputSize];
-            outputs.get(PASSTHROUGH_MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
+            if(isPassthrough) {
+                int outputSize = outputs.get(PASSTHROUGH_MNETSSD_OUTPUT_LAYER).getSize();
+                final float[] newFloatOutput = new float[outputSize];
+                outputs.get(PASSTHROUGH_MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
 
-            int width = 480;
-            int height = 640;
+                for(int i=0;i<height;i++) {
+                    for(int j=0;j<width;j++) {
+                        int startPixel = (i*width+j)*3;
+                        bitmap.setPixel(j,i, Color.argb(1f,
+                                newFloatOutput[startPixel],newFloatOutput[startPixel+1],newFloatOutput[startPixel+2]));
+                    }
+                }
 
+            } else {
+                int outputSize = outputs.get(MNETSSD_OUTPUT_LAYER).getSize();
+                final float[] newFloatOutput = new float[outputSize];
+                outputs.get(MNETSSD_OUTPUT_LAYER).read(newFloatOutput, 0, outputSize);
 
-//            float minPixel = newFloatOutput[0];
-//            float maxPixel = newFloatOutput[0];
-//
-//            for(int i=0;i<width;i++) {
-//                for(int j=0;j<height;j++) {
-//                    int startPixel = (i*width+j);
-//                    minPixel = Math.min(minPixel,newFloatOutput[startPixel]);
-//                    maxPixel = Math.max(maxPixel,newFloatOutput[startPixel]);
-//                }
-//            }
-//            float scale = 1.0f / (maxPixel-minPixel);
-//
-//            Log.e("SHERAJ","minPixel is "+ minPixel +" maxPixel is " + maxPixel);
-//            for(int i=0;i<width;i++) {
-//                for(int j=0;j<height;j++) {
-//                    int startPixel = (i*width+j);
-//                    float value = newFloatOutput[startPixel]>0.5f?(newFloatOutput[startPixel]-minPixel)*scale:0f;
-//                    assert (value>=0&&value<=1);
-//                    bitmap.setPixel(i,j, Color.argb(1f,
-//                            value,0.0f,value));
-//                }
-//            }
+                float minPixel = newFloatOutput[0];
+                float maxPixel = newFloatOutput[0];
 
-            for(int i=0;i<width;i++) {
-                for(int j=0;j<height;j++) {
-                    int startPixel = (i*width+j)*3;
-                    bitmap.setPixel(i,j, Color.argb(1f,
-                            newFloatOutput[startPixel],newFloatOutput[startPixel+1],newFloatOutput[startPixel+2]));
+                try {
+                    for(int i=0;i<height;i++) {
+                        for(int j=0;j<width;j++) {
+                            int startPixel = (i*width+j);
+
+                            if(startPixel>=640*480) {
+                                Log.e("SHERAJ","i is "+i+" j is "+j);
+                            }
+
+                            minPixel = Math.min(minPixel,newFloatOutput[startPixel]);
+                            maxPixel = Math.max(maxPixel,newFloatOutput[startPixel]);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                float scale = 1.0f / (maxPixel-minPixel);
+
+                Log.e("SHERAJ","minPixel is "+ minPixel +" maxPixel is " + maxPixel);
+
+                try {
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++) {
+                            int startPixel = (i * width + j);
+                            float value = newFloatOutput[startPixel] > 0.5f ? (newFloatOutput[startPixel] - minPixel) * scale : 0f;
+                            assert (value >= 0 && value <= 1);
+                            bitmap.setPixel(j, i, Color.argb(0.5f,
+                                    value, 0.0f, value));
+                        }
+                    }
+                } catch(Exception e) {
+                    e.printStackTrace();
                 }
             }
+
+
 
             /*
             MNETSSD_NUM_BOXES = outputs.get(MNETSSD_OUTPUT_LAYER).getSize() / 7;

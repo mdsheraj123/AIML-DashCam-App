@@ -1,9 +1,6 @@
 
 package com.qc.dashcam.Fragment;
 
-import static com.qc.dashcam.CommonUtil.Constants.BITMAP_HEIGHT;
-import static com.qc.dashcam.CommonUtil.Constants.BITMAP_WIDTH;
-
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -31,6 +28,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Surface;
 import android.view.TextureView;
@@ -73,6 +71,8 @@ public class CameraPreviewFragment extends Fragment implements
     private String searchLabel;
     private boolean mInferenceSkipped;
     private View mView;
+
+    static Bitmap mask;
 
     public static CameraPreviewFragment create() {
         final CameraPreviewFragment fragment = new CameraPreviewFragment();
@@ -314,17 +314,21 @@ public class CameraPreviewFragment extends Fragment implements
                 final int inputWidth = mSnpeHelper.getInputTensorWidth();
                 final int inputHeight = mSnpeHelper.getInputTensorHeight();
 
-                Bitmap mBitmap = mTextureView.getBitmap(inputWidth, inputHeight);
 
+                Log.e("SHERAJ", "width " + mTextureView.getWidth() + " height " + mTextureView.getHeight());
+
+
+                final Bitmap mBitmap = mTextureView.getBitmap(inputWidth, inputHeight);
+//
 //                Matrix matrix = new Matrix();
-//                boolean xFlip = true;
-//                boolean yFlip = false;
-//                matrix.postScale(xFlip ? -1 : 1, yFlip ? -1 : 1, BITMAP_WIDTH / 2f, BITMAP_HEIGHT / 2f);
+////                boolean xFlip = true;
+////                boolean yFlip = false;
+////                matrix.postScale(xFlip ? -1 : 1, yFlip ? -1 : 1, BITMAP_WIDTH / 2f, BITMAP_HEIGHT / 2f);
 //                matrix.postRotate(270);
-//                Bitmap scaledBitmap = Bitmap.createScaledBitmap(mBitmap, 640, 480, true);
-//                Bitmap rotatedBitmap = Bitmap.createBitmap(scaledBitmap, 0, 0, 640, 480, matrix, true);
+////                Bitmap scaledBitmap = Bitmap.createScaledBitmap(mBitmap, 640, 480, true);
+//                Bitmap rotatedBitmap = Bitmap.createBitmap(mBitmap, 0, 0, 480, 640, matrix, true);
 
-                final Bitmap mask = mSnpeHelper.mobileNetSSDInference(mBitmap);
+                mask = mSnpeHelper.mobileNetSSDInference(mBitmap);
 
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
