@@ -156,11 +156,10 @@ public class SNPEHelper {
                 for(int i=0;i<height;i++) {
                     for(int j=0;j<width;j++) {
                         int startPixel = (i*width+j)*3;
-                        bitmap.setPixel(j,i, Color.argb(1f,
+                        bitmap.setPixel(j,i, Color.argb(0.5f,
                                 newFloatOutput[startPixel],newFloatOutput[startPixel+1],newFloatOutput[startPixel+2]));
                     }
                 }
-
             } else {
                 int outputSize = outputs.get(MNETSSD_OUTPUT_LAYER).getSize();
                 final float[] newFloatOutput = new float[outputSize];
